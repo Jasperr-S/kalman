@@ -54,8 +54,37 @@ legend("bottomleft", legend = c("fit term", "penalty term"),
        col = c("blue", "red"), lty = 1)
 dev.off()
 
+#----convergence rate visualization----
+TT_small<-200
+TT_large<-20000
+ll_large<-numeric(length(phi_grid))
+ll_small<-numeric(length(phi_grid))
+res_large<- sim_ssm(TT_large,phi_true,sd_eta_true,sd_eps_true)
+res_small<- sim_ssm(TT_small,phi_true,sd_eta_true,sd_eps_true)
+for (i in seq_along(phi_grid)){
+  k_large<-kalman_ll(res_large$y,phi_grid[i],sd_eta_true,sd_eps_true)
+  ll_large[i]<- k_large$logL
+  k_small<-kalman_ll(res_small$y,phi_grid[i],sd_eta_true,sd_eps_true)
+  ll_small[i]<- k_small$logL
+}
+
+plot(phi_grid,ll,type="l",xlab="phi",ylab="log-likelihood"
+     ,ylim=range(c(ll,ll_large,ll_small)))
+lines(phi_grid,ll_large,col="blue")
+lines(phi_grid,ll_small,col="red")
 
 
+
+png("figures/convergence_rate.png",width=800,height=600)
+plot(phi_grid, ll_small - max(ll_small), type = "l", col = "red",
+     ylim = c(-50, 2), xlab = "phi", ylab = "logL (centred at max)")
+lines(phi_grid, ll       - max(ll),       col = "black")
+lines(phi_grid, ll_large - max(ll_large), col = "blue")
+abline(v = phi_true, lty = 2, col = "grey")
+legend("bottomright", legend = c("T=200", "T=2000", "T=20000"),
+       col = c("red", "black", "blue"), lty = 1)
+abline(h=-1.92,lty=3)
+dev.off()
 
 #----sd-eta----
 sd_eta_grid<- seq(from=0.5,to=2,by=0.005)
