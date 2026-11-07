@@ -1,8 +1,12 @@
+source("R/simulate.R")
+source("R/particle.R")
+source("R/kalman.R")
 draws<-rnorm(10000,2,0.5)
 print(mean(draws))
 print(var(draws))
 print(mean(draws>3))
 hist(draws,breaks=50)
+
 
 #---predict---
 phi<-0.9
@@ -51,8 +55,43 @@ plot(y_list,sd_mean,type="l")
 plot(y_list,ESS_list,type="l",ylim = range(c(ESS_list,ESS_analy)))
 lines(y_list,ESS_analy,type="l",col="red")
 
+#--- ESS after multiple periods of propagation, without resampling
+yt_list<- sim_ssm(50,phi,sig_eta,sig_eps)$y
+N<- 10000
+draws2<- rnorm(N,0,sig_eta/sqrt(1-phi^2))
+w_bar<- rep(1/N,N)
+TT<- 50
+ESS_list2<- numeric(TT)
+for (t in 1:TT){
+  draws2<- phi*draws2+rnorm(N,0,sig_eta)
+  w<- w_bar* dnorm(yt_list[t],draws2,sig_eps)
+  w_bar<- w/sum(w)
+  ESS_list2[t]<- 1/sum(w_bar^2)
   
+}
+plot(1:TT,ESS_list2,type="l",log="y")
+print(ESS_list2[TT])
+
+#with resampling
+
+draws2<- rnorm(N,0,sig_eta/sqrt(1-phi^2))
+w_bar<- rep(1/N,N)
+ESS_list2<- numeric(TT)
+unq<- numeric(TT)
+for (t in 1:TT){
+  draws2<- phi*draws2+rnorm(N,0,sig_eta)
+  w<- w_bar* dnorm(yt_list[t],draws2,sig_eps)
+  w_bar<- w/sum(w)
+  ESS_list2[t]<- 1/sum(w_bar^2)
+  idx<- sample(1:N,N,replace=TRUE,prob=w_bar)
+  unq[t]<- length(unique(idx))
+  draws2<- draws2[idx]
+  w_bar<-rep(1/N,N)
   
+}
+plot(1:TT,ESS_list2,type="l")
+plot(unq)
+
   
   
 
