@@ -17,5 +17,14 @@ for (i in 1:20){
   ptc_ll[i]<- pf_ll(y,phi,sd_eta,sd_eps,10000)$logL
 }
 
-plot(1:20,ptc_ll)
-abline(v=k_ll)
+plot(1:20,ptc_ll,ylim=range(c(ptc_ll,k_ll)))
+abline(h=k_ll)
+
+
+ptc_ll_ss<- numeric(20)
+for (i in 1:20){
+  set.seed(i)
+  ptc_ll_ss[i]<- pf_ll(y,phi,sd_eta,sd_eps,100)$logL
+}
+
+print(sd(ptc_ll_ss)/sd(ptc_ll))
