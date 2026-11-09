@@ -22,9 +22,15 @@ abline(h=k_ll)
 
 
 ptc_ll_ss<- numeric(20)
+pred_ll<-numeric(20)
 for (i in 1:20){
   set.seed(i)
-  ptc_ll_ss[i]<- pf_ll(y,phi,sd_eta,sd_eps,100)$logL
+  out<- pf_ll(y,phi,sd_eta,sd_eps,100)
+  ptc_ll_ss[i]< -out$logL
+  pred_ll[i]<- out$varlik
 }
+print(mean(pred_ll))
+print(var(ptc_ll_ss))
+
 
 print(sd(ptc_ll_ss)/sd(ptc_ll))

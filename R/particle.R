@@ -6,6 +6,8 @@ pf_ll<- function(y,phi,sd_eta,sd_eps,N){
   P_vec<-numeric(TT)
   Fv_vec<- numeric(TT)
   v_vec<- numeric(TT)
+  ESS_vec<-numeric(TT)
+  var_ll_pred<- 0 #predicted variance of the loglik
   
   for (t in seq_along(y)){
     draws<- phi*draws+rnorm(N,0,sd_eta)
@@ -18,10 +20,14 @@ pf_ll<- function(y,phi,sd_eta,sd_eps,N){
     w<- dnorm(y[t],draws,sd_eps)
     loglik<- loglik+log(sum(w)/N)
     w_bar<- w/sum(w)
+    ESS_vec[t]<- 1/sum(w_bar^2)
+    var_ll_pred<-var_ll_pred+1/ESS_vec[t]-1/N
+    
     a_vec[t]<- sum(w_bar*draws)
     P_vec[t]<- sum(w_bar*(a_vec[t]-draws)^2)
     draws<- sample(draws,N,replace=TRUE,prob=w_bar)
     
   }
-return(list(logL=loglik,a=a_vec,P=P_vec,v=v_vec,Fv=Fv_vec))
+return(list(logL=loglik,a=a_vec,P=P_vec,v=v_vec
+            ,Fv=Fv_vec,varlik=var_ll_pred,ESS=ESS_vec))
 }
