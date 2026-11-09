@@ -25,7 +25,12 @@ pf_ll<- function(y,phi,sd_eta,sd_eps,N){
     
     a_vec[t]<- sum(w_bar*draws)
     P_vec[t]<- sum(w_bar*(a_vec[t]-draws)^2)
-    draws<- sample(draws,N,replace=TRUE,prob=w_bar)
+    # draws<- sample(draws,N,replace=TRUE,prob=w_bar)
+    #here use another resampler to maintain consistency of particles
+    u<- runif(N)
+    idx<- findInterval(u,cumsum(w_bar))+1
+    idx<- pmin(idx,N)
+    draws<- draws[idx]
     
   }
 return(list(logL=loglik,a=a_vec,P=P_vec,v=v_vec
