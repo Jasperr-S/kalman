@@ -1,4 +1,7 @@
 pf_ll<- function(y,phi,sd_eta,sd_eps,N){
+  if(abs(phi)>=0.999){
+    return(list(logL=-Inf))
+  }
   draws<- rnorm(N,0,sd_eta/sqrt(1-phi^2))
   loglik<- 0
   TT<-length(y)
@@ -17,8 +20,12 @@ pf_ll<- function(y,phi,sd_eta,sd_eps,N){
     
     v_vec[t]<- y[t]-a_pred
     
-    w<- dnorm(y[t],draws,sd_eps)
-    loglik<- loglik+log(sum(w)/N)
+    #  log-sum-exp trick to avoid zero weight.
+    lw<- dnorm(y[t],draws,sd_eps,log=TRUE)
+    m<- max(lw)
+    w<- exp(lw-m)
+    loglik<- loglik+m+log(mean(w))
+    #loglik<- loglik+log(sum(w)/N)
     w_bar<- w/sum(w)
     ESS_vec[t]<- 1/sum(w_bar^2)
     var_ll_pred<-var_ll_pred+1/ESS_vec[t]-1/N
