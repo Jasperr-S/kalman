@@ -105,7 +105,10 @@ for (i in 1:n){
                  fn=neg_ll,
                  y=y_sim,method="BFGS",hessian=TRUE)
   phi_vec[i]<- tanh(fit_ll$par)
-  Hll_vec[i]<- fit_ll$hessian[1,1]/(1-phi_vec[i]^2)^2
+  Hll_vec[i]<- (kalman_ll(y_sim,phi+1e-4,sd_eta,sd_eps)$logL
+                +kalman_ll(y_sim,phi-1e-4,sd_eta,sd_eps)$logL
+                -kalman_ll(y_sim,phi,sd_eta,sd_eps)$logL)/1e-8
+  
   score_vec[i] <- (kalman_ll(y_sim,phi+1e-4,sd_eta,sd_eps)$logL
       -kalman_ll(y_sim,phi-1e-4,sd_eta,sd_eps)$logL)/2e-4
 }
@@ -123,7 +126,6 @@ print(mean(Hll_vec))
 N_grid<- c(100,300,1000,3000)
 
 neg_llpf<- function(par,y,N,s){
-  cat(tanh(par),"\n")
   set.seed(s)
   -pf_ll(y,tanh(par),sd_eta,sd_eps,N)$logL
 }
