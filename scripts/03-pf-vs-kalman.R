@@ -93,7 +93,7 @@ fit_ll<- optim(par=atanh(0.5),
                y=y,method="BFGS",hessian = TRUE)
 
 # variance of the estimation and the Hessain of ll
-n<-500
+n<-2000
 Hll_vec<- numeric(n)
 phi_vec<- numeric(n)
 score_vec<- numeric(n)
@@ -101,28 +101,31 @@ TT<-100
 
 for (i in 1:n){
   y_sim<- sim_ssm(TT,phi,sd_eta,sd_eps)$y
-  fit_ll<- optim(par=atanh(0.5),
+  fit_sim<- optim(par=atanh(0.5),
                  fn=neg_ll,
                  y=y_sim,method="BFGS",hessian=TRUE)
-  phi_vec[i]<- tanh(fit_ll$par)
+  phi_vec[i]<- tanh(fit_sim$par)
+  #second derivative, evaluated at real phi
   Hll_vec[i]<- (kalman_ll(y_sim,phi+1e-4,sd_eta,sd_eps)$logL
                 +kalman_ll(y_sim,phi-1e-4,sd_eta,sd_eps)$logL
-                -kalman_ll(y_sim,phi,sd_eta,sd_eps)$logL)/1e-8
+                -2*kalman_ll(y_sim,phi,sd_eta,sd_eps)$logL)/1e-8
   
   score_vec[i] <- (kalman_ll(y_sim,phi+1e-4,sd_eta,sd_eps)$logL
       -kalman_ll(y_sim,phi-1e-4,sd_eta,sd_eps)$logL)/2e-4
 }
+hist(phi_vec,breaks=50)
+dist_vec<- score_vec^2+Hll_vec
 
-print(mean(1/Hll_vec))
-print(var(phi_vec))
+#variance of estimation and -1/H
+cat("-1/H=",-mean(1/Hll_vec),"\n","var(phi_hat)=",var(phi_vec))
+#the information equality
+cat("mean of S^2:",var(score_vec),"\n","mean of -H:",-mean(Hll_vec))
+#t-test on the information equality
+cat("t-value")
+print(mean(dist_vec)/(sd(dist_vec)/sqrt(n)))
 
-print(var(score_vec))
-print(mean(Hll_vec))
 
-
-
-#optimizer for pf, with quasi newton mehod
-
+#optimizer for pf, with quasi newton method
 N_grid<- c(100,300,1000,3000)
 
 neg_llpf<- function(par,y,N,s){
@@ -134,6 +137,12 @@ failcount<-numeric(length(N_grid))
 phi_mat<- matrix(NA,length(N_grid),50)
 phi_sd<- numeric(length(N_grid))
 
+phi_eff<- numeric(length(N_grid))
+phi_var<- numeric(length(N_grid))
+rmse <-numeric(length(N_grid))
+sd_ <-numeric(length(N_grid))
+bias <-numeric(length(N_grid))
+nmove<- numeric(length(N_grid))
 
 for (i in seq_along(N_grid)){
   for (j in 1:50){
@@ -145,19 +154,77 @@ for (i in seq_along(N_grid)){
     failcount[i]<- failcount[i]+ (fit_pf$convergence!=0)
     phi_mat[i,j]<- fit_pf$par
   }
-
-}
-plot(tanh(phi_mat[4,1:50]))
-
-phi_eff<- numeric(length(N_grid))
-phi_var<- numeric(length(N_grid))
-for (i in 1:length(N_grid)){
   phi_moved<- abs(tanh(phi_mat[i,])-0.5) >1e-2
   phi_eff[i]<- mean(phi_moved)
   phi_var[i]<- sd(tanh(phi_mat[i,phi_moved]))
+  est<- tanh(phi_mat[i,phi_moved])
+  bias[i]<- mean(est)-phi
+  sd_[i] <- sd(est)
+  #RMSE: root mean squared error
+  rmse[i]<- sqrt(mean(bias[i]^2))
+  nmove[i]<- mean(phi_moved)
+  
+
 }
-plot(N_grid,phi_var,ylim=range(c(sd_eta/fit_ll$hessian ,phi_var)))
-abline(h=sd_eta/fit_ll$hessian)
+plot(tanh(phi_mat[4,1:50]))
+plot(N_grid,phi_var,ylim=range(c(sd(phi_vec) ,phi_var)))
+abline(h=sd(phi_vec))
+hist(tanh(phi_mat[4,1:50]),breaks=50)
+
+
+#------Brent on the same seeds
+
+failcountB<-numeric(length(N_grid))
+phi_matB<- matrix(NA,length(N_grid),50)
+phi_sdB<- numeric(length(N_grid))
+
+phi_effB<- numeric(length(N_grid))
+phi_varB<- numeric(length(N_grid))
+rmseB <-numeric(length(N_grid))
+sd_B <-numeric(length(N_grid))
+biasB <-numeric(length(N_grid))
+nmoveB <- numeric(length(N_grid))
+
+for (i in seq_along(N_grid)){
+  for (j in 1:50){
+    fit_pfB<- optim(par=atanh(0.5),
+                   fn=neg_llpf,
+                   y=y,method="Brent",
+                   lower=-3,upper=3,
+                   N=N_grid[i],
+                   s=j)
+    failcountB[i]<- failcountB[i]+ (fit_pfB$convergence!=0)
+    phi_matB[i,j]<- fit_pfB$par
+  }
+  phi_movedB<- abs(tanh(phi_matB[i,])-0.5) >1e-2
+  phi_effB[i]<- mean(phi_movedB)
+  phi_varB[i]<- sd(tanh(phi_matB[i,phi_movedB]))
+  est<- tanh(phi_matB[i,phi_movedB])
+  biasB[i]<- mean(est)-phi
+  sd_B[i] <- sd(est)
+  #RMSE: root mean squared error
+  rmseB[i]<- sqrt(mean(biasB[i]^2))
+  nmoveB[i]<- mean(phi_movedB)
+  
+  
+  
+}
+
+
+
+plot(tanh(phi_matB[4,1:50]))
+plot(N_grid,phi_varB,ylim=range(c(sd(phi_vec) ,phi_varB)))
+abline(h=sd(phi_vec))
+hist(tanh(phi_matB[4,1:50]),breaks=50)
+
+#print the table
+resB<- data.frame(N=N_grid,stuck=1-phi_effB,bias=biasB,
+                  sd=sd_B,rmse=rmseB,nmove=nmoveB)
+res<- data.frame(N=N_grid,stuck=1-phi_eff,bias=bias,
+                  sd=sd_,rmse=rmse,nmove=nmove)
+
+print(round(resB,4))
+print(round(res,4))
 
 
 
